@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Calculator, Calendar, Download } from "lucide-react";
+import { FileText, Calculator, Calendar, Download, LogIn } from "lucide-react";
+import Auth from "./Auth";
 
 const API = import.meta.env.VITE_BACKEND_URL || "";
 
@@ -42,6 +43,22 @@ export default function Dashboard() {
     { k: "monday", l: "Lun" },{ k: "tuesday", l: "Mar" },{ k: "wednesday", l: "Mer" },{ k: "thursday", l: "Jeu" },{ k: "friday", l: "Ven" },{ k: "saturday", l: "Sam" },{ k: "sunday", l: "Dim" },
   ];
 
+  // Contract form state + PDF
+  const [contract, setContract] = useState({ parent_email: "", assistant_email: "", child_name: "", start_date: "", hours_per_week: "", hourly_rate: "", paid_vacation_days: 25, notes: "" });
+  const genPdf = async () => {
+    const payload = { ...contract, hours_per_week: parseFloat(contract.hours_per_week||0), hourly_rate: parseFloat(contract.hourly_rate||0) };
+    const r = await fetch(`${API}/contracts/pdf`, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'contrat_assmat_pro.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
       <motion.h1 initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} className="text-3xl font-semibold tracking-tight text-slate-900 mb-6">Tableau de bord</motion.h1>
@@ -49,12 +66,16 @@ export default function Dashboard() {
       <div className="grid lg:grid-cols-3 gap-6">
         <Card title="Contrat" icon={FileText}>
           <p className="text-sm text-slate-600 mb-4">Renseignez les éléments clés puis générez un PDF.</p>
-          <form className="grid grid-cols-2 gap-3">
-            <input className="col-span-2 input" placeholder="Parent (email)" />
-            <input className="col-span-2 input" placeholder="Assistante (email)" />
-            <input className="input" placeholder="Heures/sem" />
-            <input className="input" placeholder="Taux horaire" />
-            <button type="button" className="col-span-2 rounded-xl bg-black text-white py-2 text-sm hover:opacity-90 flex items-center justify-center gap-2">
+          <form className="grid grid-cols-2 gap-3" onSubmit={(e)=>e.preventDefault()}>
+            <input className="col-span-2 input" placeholder="Parent (email)" value={contract.parent_email} onChange={e=>setContract({...contract, parent_email:e.target.value})} />
+            <input className="col-span-2 input" placeholder="Assistante (email)" value={contract.assistant_email} onChange={e=>setContract({...contract, assistant_email:e.target.value})} />
+            <input className="col-span-2 input" placeholder="Enfant" value={contract.child_name} onChange={e=>setContract({...contract, child_name:e.target.value})} />
+            <input className="input" type="date" value={contract.start_date} onChange={e=>setContract({...contract, start_date:e.target.value})} />
+            <input className="input" placeholder="Heures/sem" value={contract.hours_per_week} onChange={e=>setContract({...contract, hours_per_week:e.target.value})} />
+            <input className="input" placeholder="Taux horaire" value={contract.hourly_rate} onChange={e=>setContract({...contract, hourly_rate:e.target.value})} />
+            <input className="input" placeholder="Jours CP" value={contract.paid_vacation_days} onChange={e=>setContract({...contract, paid_vacation_days:e.target.value})} />
+            <input className="col-span-2 input" placeholder="Notes" value={contract.notes} onChange={e=>setContract({...contract, notes:e.target.value})} />
+            <button type="button" onClick={genPdf} className="col-span-2 rounded-xl bg-black text-white py-2 text-sm hover:opacity-90 flex items-center justify-center gap-2">
               <Download className="w-4 h-4"/> Générer PDF
             </button>
           </form>
@@ -79,14 +100,20 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card title="Planning hebdo" icon={Calendar}>
-          <div className="grid grid-cols-7 gap-2 text-center text-xs text-slate-500">
-            {weekdays.map(d => (
-              <div key={d.k} className="rounded-xl border border-black/5 py-3 bg-slate-50">{d.l}</div>
-            ))}
-          </div>
-          <p className="text-xs text-slate-500 mt-3">Bientôt: enregistrement et partage.</p>
-        </Card>
+        <div className="space-y-6">
+          <Card title="Planning hebdo" icon={Calendar}>
+            <div className="grid grid-cols-7 gap-2 text-center text-xs text-slate-500">
+              {weekdays.map(d => (
+                <div key={d.k} className="rounded-xl border border-black/5 py-3 bg-slate-50">{d.l}</div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-3">Bientôt: enregistrement et partage.</p>
+          </Card>
+
+          <Card title="Connexion" icon={LogIn}>
+            <Auth />
+          </Card>
+        </div>
       </div>
 
       <style>{`.input{appearance:none; border-radius:0.75rem; border:1px solid rgba(0,0,0,0.08); padding:0.5rem 0.75rem; background:white; outline:none} .input:focus{box-shadow:0 0 0 4px rgba(0,0,0,0.06)}`}</style>
